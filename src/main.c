@@ -7,10 +7,17 @@
 #include "BMP280.h"
 #include <math.h>
 
+
+//--------------------- DECLARACION VARIABLES ------------
+float sensacion_termica, punto_rocio, cte;
+float umbral_t = 29;
+float a = 17.27, b = 237.7;
+uint32_t ultima_alarma = 0;
+
 // -------------------- SENSOR BMP280 --------------------
 BMP280_HandleTypedef bmp280;
 float pressure, temperature, humidity;
-char buffer[16];
+char buffer[32];
 
 // -------------------- SENSOR DHT11 --------------------
 #define DHT11_PORT GPIOB
@@ -162,11 +169,18 @@ int main(void) {
     Lcd_Send_String("Meteorologica");
     miliDelay(2000);
     Lcd_Clear();
+    Lcd_Clear();
+    Lcd_Set_Cursor(1, 1);
+    Lcd_Send_String("Proyecto");
+    Lcd_Set_Cursor(2, 1);
+    Lcd_Send_String("Electronica IV ");
+    miliDelay(2000);
+
 
     while (1) {
     char templcd[16] = {0};
     char humlcd[16] = {0};        
-        tiempo = HAL_GetTick();
+    tiempo = HAL_GetTick();
 
         // Actualizar botones
         actualizar_boton(&boton0, GPIOA, GPIO_PIN_0);
@@ -197,9 +211,8 @@ int main(void) {
                         TCD = DHT11_Read();
                         SUM = DHT11_Read();
                         if ((RHI + RHD + TCI + TCD) == SUM) {
-                            tCelsius = (float)TCI + (float)(TCD / 10);
-                            RH = (float)RHI + (float)(RHD / 10);
-
+                            tCelsius = (float)TCI + (float)(TCD / 10.0f);
+                            RH = (float)RHI + (float)(RHD / 10.0f);
                         } else {
                             Lcd_Set_Cursor(1, 1);
                             Lcd_Send_String("Error DHT11");
@@ -211,6 +224,10 @@ int main(void) {
                         Lcd_Send_String("No respuesta");
                         Lcd_Set_Cursor(2, 1);
                         Lcd_Send_String("DHT11");
+                        miliDelay(2000);
+                        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_SET); // Enciende LED
+                        miliDelay(500);
+                        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_RESET); // Apaga LED
                     }
                 }
  if (!bmp280_read_float(&bmp280, &temperature, &pressure, &humidity)) {
@@ -218,40 +235,50 @@ int main(void) {
                         Lcd_Send_String("Error lectura");
                         Lcd_Set_Cursor(2, 1);
                         Lcd_Send_String("BMP280");
-                    } else {
-                        Lcd_Set_Cursor(1, 1);
-                        sprintf(buffer, "Pres: %.2f hPa", pressure / 100);
-                        Lcd_Send_String(buffer);
-                        Lcd_Set_Cursor(2, 1);
-                        sprintf(buffer, "Temp: %.2f C", temperature);
-                        Lcd_Send_String(buffer);
                     }                
+                        sensacion_termica = tCelsius + (0.33 * RH/100) - 4;
+                        cte = (a * tCelsius) / (b + tCelsius) + log(RH / 100);
+                        punto_rocio = (b * cte) / (a - cte);
+                        float probabilidad_lluvia = RH - ((pressure/100 - 980) / 5);
+                    if (probabilidad_lluvia< 0) probabilidad_lluvia = 0;   // La probabilidad no puede ser negativa
+                    if (probabilidad_lluvia > 100) probabilidad_lluvia = 100; // La máxima es 100%
+
             switch (modo_visualizacion) {
                 case 0:
-
                             Lcd_Set_Cursor(1, 1);
-                            sprintf(templcd, "Temp: %.2f C", tCelsius);
+                            sprintf(templcd, "Temp: %.2f C   ", tCelsius);
                             Lcd_Send_String(templcd);
                             Lcd_Set_Cursor(2, 1);
                             sprintf(humlcd, "Humedad: %.2f%%", RH);
                             Lcd_Send_String(humlcd);
                     break;
-
                 case 1:
                    
+                        Lcd_Set_Cursor(1, 1);
+                        sprintf(buffer, "Pres: %.2f hPa", pressure / 100);
+                        Lcd_Send_String(buffer);
+                        Lcd_Set_Cursor(2, 1);
+                        sprintf(buffer, "Sterm: %.2f C", sensacion_termica);
+                        Lcd_Send_String(buffer);
+                    
                 break;
                 case 2:
-                    Lcd_Set_Cursor(1, 1);
-                    Lcd_Send_String("Modo Personal");
-                    Lcd_Set_Cursor(2, 1);
-                    Lcd_Send_String("Boton 2 activo");
+                        Lcd_Set_Cursor(1, 1);
+                        sprintf(buffer, "Lluvia: %.2f %%", probabilidad_lluvia);
+                        Lcd_Send_String(buffer);
+                        Lcd_Set_Cursor(2, 1);
+                        sprintf(buffer, "Pto rocio:%.2fC", punto_rocio);
+                        Lcd_Send_String(buffer);
                     break;
             }
-        }
+    if(tCelsius>umbral_t){
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_SET); // Enciende LED temperatura ambiente peligrosa
+    } else{
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET); // Apaga LED temperatura ambiente peligrosa
     }
-
-
-                      
+    }
+   
+    }
 
 
 
