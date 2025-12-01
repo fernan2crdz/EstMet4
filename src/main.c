@@ -8,32 +8,32 @@
 #include <math.h>
 
 
-//--------------------- DECLARACION VARIABLES ------------
+//--------------------- DECLARACION DE VARIABLES ------------
 float sensacion_termica, punto_rocio, cte;
-float umbral_t = 29;
-float a = 17.27, b = 237.7;
-uint32_t ultima_alarma = 0;
+float umbral_t = 29; //cte para alarma temperatura alta
+float a = 17.27, b = 237.7; //constantes para calculo punto de rocio
+uint32_t ultima_alarma = 0; 
 
-// -------------------- SENSOR BMP280 --------------------
-BMP280_HandleTypedef bmp280;
-float pressure, temperature, humidity;
-char buffer[32];
+// -------------------- VARIABLES PARA EL SENSOR BMP280 --------------------
+BMP280_HandleTypedef bmp280; 
+float pressure, temperature, humidity; // Variables para almacenar las lecturas del BMP280
+char buffer[32]; // Buffer para formatear cadenas para el LCD
 
 // -------------------- SENSOR DHT11 --------------------
-#define DHT11_PORT GPIOB
-#define DHT11_PIN GPIO_PIN_9
-uint8_t RHI, RHD, TCI, TCD, SUM;
-uint32_t pMillis, cMillis;
-float tCelsius = 0;
-float RH = 0;
+#define DHT11_PORT GPIOB // Puerto donde está conectado el DHT11
+#define DHT11_PIN GPIO_PIN_9 // Pin donde está conectado el DHT11
+uint8_t RHI, RHD, TCI, TCD, SUM; // Variables para almacenar los datos del DHT11
+uint32_t pMillis, cMillis; // Variables para temprización
+float tCelsius = 0; // Temperatura en Celsius
+float RH = 0; // Humedad relativa en %
 
 // -------------------- DELAYS --------------------
-void microDelay(uint16_t delay) {
+void microDelay(uint16_t delay) { // Delay en microsegundos
     __HAL_TIM_SET_COUNTER(&htim1, 0);
     while (__HAL_TIM_GET_COUNTER(&htim1) < delay);
 }
 
-void miliDelay(uint16_t delay_ms) {
+void miliDelay(uint16_t delay_ms) { // Delay en milisegundos
     while (delay_ms--) {
         __HAL_TIM_SET_COUNTER(&htim1, 0);
         while (__HAL_TIM_GET_COUNTER(&htim1) < 1000);
@@ -41,24 +41,24 @@ void miliDelay(uint16_t delay_ms) {
 }
 
 // -------------------- BOTONES --------------------
-typedef enum {
+typedef enum { // Estados del botón
     BOTON_LIBRE,
     BOTON_PRESIONADO,
     BOTON_ESPERANDO_LIBERACION
 } EstadoBoton;
 
-typedef struct {
+typedef struct { // Estructura para manejar el estado del botón
     EstadoBoton estado;
     uint32_t tiempo_presionado;
     bool evento;
 } Boton;
 
-Boton boton0 = {BOTON_LIBRE, 0, false};
+Boton boton0 = {BOTON_LIBRE, 0, false}; // Botón para modo 0
 Boton boton1 = {BOTON_LIBRE, 0, false};
 Boton boton2 = {BOTON_LIBRE, 0, false};
 
-void actualizar_boton(Boton* b, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin) {
-    switch (b->estado) {
+void actualizar_boton(Boton* b, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin) { // Actualiza el estado del botón
+    switch (b->estado) { 
         case BOTON_LIBRE:
             if (HAL_GPIO_ReadPin(GPIOx, GPIO_Pin) == GPIO_PIN_SET) {
                 b->tiempo_presionado = HAL_GetTick();
@@ -180,7 +180,7 @@ int main(void) {
     while (1) {
     char templcd[16] = {0};
     char humlcd[16] = {0};        
-    tiempo = HAL_GetTick();
+    //tiempo = HAL_GetTick();
 
         // Actualizar botones
         actualizar_boton(&boton0, GPIOA, GPIO_PIN_0);
@@ -201,7 +201,9 @@ int main(void) {
         }
 
         // Leer sensores cada 2000 ms
+        tiempo = HAL_GetTick();
         if (tiempo - tiempo2 >= 2000) {
+            
             tiempo2 = tiempo;
             Lcd_Clear();
                     if (DHT11_Start()) {
