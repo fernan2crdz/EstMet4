@@ -12,7 +12,6 @@
 float sensacion_termica, punto_rocio, cte;
 float umbral_t = 29; //cte para alarma temperatura alta
 float a = 17.27, b = 237.7; //constantes para calculo punto de rocio
-uint32_t ultima_alarma = 0; 
 
 // -------------------- VARIABLES PARA EL SENSOR BMP280 --------------------
 BMP280_HandleTypedef bmp280; 
@@ -134,8 +133,8 @@ uint8_t DHT11_Read(void) {
     return b;
 }
 
-// -------------------- VISUALIZACIÓN --------------------
-uint8_t modo_visualizacion = 0;
+
+uint8_t modo_visualizacion = 0; // Modo de visualización inicial.
 unsigned long tiempo = 0, tiempo2 = 0;
 
 void SystemClock_Config(void);
@@ -200,7 +199,7 @@ int main(void) {
             boton2.evento = false;
         }
 
-        // Leer sensores cada 2000 ms
+        // Leer sensor DHT11 cada 2000 ms
         tiempo = HAL_GetTick();
         if (tiempo - tiempo2 >= 2000) {
             
